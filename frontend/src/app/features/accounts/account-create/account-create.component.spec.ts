@@ -1,15 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AccountCreateComponent } from './account-create.component';
 import { AccountService } from '../../../core/services/account.service';
-import { Router } from '@angular/router';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { Account } from '../../../core/models/account.model';
 
 describe('AccountCreateComponent', () => {
   let fixture: ComponentFixture<AccountCreateComponent>;
   let mockAccountService: jasmine.SpyObj<AccountService>;
-  let mockRouter: jasmine.SpyObj<Router>;
+  let router: Router;
 
   const mockAccount: Account = {
     accountId: 'id-1',
@@ -21,16 +20,17 @@ describe('AccountCreateComponent', () => {
 
   beforeEach(async () => {
     mockAccountService = jasmine.createSpyObj('AccountService', ['create']);
-    mockRouter = jasmine.createSpyObj('Router', ['navigate']);
 
     await TestBed.configureTestingModule({
       imports: [AccountCreateComponent],
       providers: [
         provideRouter([]),
-        { provide: AccountService, useValue: mockAccountService },
-        { provide: Router, useValue: mockRouter }
+        { provide: AccountService, useValue: mockAccountService }
       ]
     }).compileComponents();
+
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigate');
 
     fixture = TestBed.createComponent(AccountCreateComponent);
     fixture.detectChanges();
@@ -54,7 +54,7 @@ describe('AccountCreateComponent', () => {
       initialAmount: 100,
       currencyCode: 'EUR'
     });
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/accounts']);
+    expect(router.navigate).toHaveBeenCalledWith(['/accounts']);
   });
 
   it('displays error message on API error', () => {
