@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.kata</groupId>
+    <groupId>fr.kanis</groupId>
     <artifactId>bank-account</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
