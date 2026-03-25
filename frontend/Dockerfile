@@ -2,7 +2,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install -g npm@11 && npm ci
 COPY . .
 RUN npx ng build --configuration=production
 
