@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -38,92 +39,90 @@ class BankAccountE2ETest {
         return restTemplate.exchange(url, HttpMethod.GET, null, MAP_TYPE);
     }
 
+    private Map<String, Object> body(ResponseEntity<Map<String, Object>> resp) {
+        var body = resp.getBody();
+        assertThat(body).isNotNull();
+        return body;
+    }
+
+    private UUID createAccount(String owner, String amount) {
+        var resp = post(BASE, new CreateAccountRequest(owner, new BigDecimal(amount), "EUR"));
+        return UUID.fromString((String) body(resp).get("accountId"));
+    }
+
     @Test
     void full_lifecycle_deposit_withdraw_history() {
-        // Create account
-        var createReq = new CreateAccountRequest("Alice", new BigDecimal("100.00"), "EUR");
-        ResponseEntity<Map<String, Object>> createResp = post(BASE, createReq);
-        assertThat(createResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        UUID accountId = UUID.fromString((String) createResp.getBody().get("accountId"));
+        UUID accountId = createAccount("Alice", "100.00");
 
         // Deposit
-        var depositReq = new MoneyOperationRequest(new BigDecimal("50.00"), "EUR");
-        ResponseEntity<Map<String, Object>> depositResp = post(BASE + "/" + accountId + "/deposits", depositReq);
+        var depositResp = post(BASE + "/" + accountId + "/deposits",
+                new MoneyOperationRequest(new BigDecimal("50.00"), "EUR"));
         assertThat(depositResp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(depositResp.getBody().get("type")).isEqualTo("DEPOSIT");
-        assertThat(depositResp.getBody().get("balanceAfter")).isEqualTo(150.0);
+        assertThat(body(depositResp))
+                .containsEntry("type", "DEPOSIT")
+                .containsEntry("balanceAfter", 150.0);
 
         // Withdraw
-        var withdrawReq = new MoneyOperationRequest(new BigDecimal("30.00"), "EUR");
-        ResponseEntity<Map<String, Object>> withdrawResp = post(BASE + "/" + accountId + "/withdrawals", withdrawReq);
+        var withdrawResp = post(BASE + "/" + accountId + "/withdrawals",
+                new MoneyOperationRequest(new BigDecimal("30.00"), "EUR"));
         assertThat(withdrawResp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(withdrawResp.getBody().get("type")).isEqualTo("WITHDRAWAL");
-        assertThat(withdrawResp.getBody().get("balanceAfter")).isEqualTo(120.0);
+        assertThat(body(withdrawResp))
+                .containsEntry("type", "WITHDRAWAL")
+                .containsEntry("balanceAfter", 120.0);
 
         // History
-        ResponseEntity<Map<String, Object>> historyResp = get(BASE + "/" + accountId + "/transactions");
+        var historyResp = get(BASE + "/" + accountId + "/transactions");
         assertThat(historyResp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        var transactions = (java.util.List<?>) historyResp.getBody().get("transactions");
-        assertThat(transactions).hasSize(2);
+        assertThat((List<?>) body(historyResp).get("transactions")).hasSize(2);
     }
 
     @Test
     void withdraw_more_than_balance_returns_422() {
-        var createReq = new CreateAccountRequest("Bob", new BigDecimal("50.00"), "EUR");
-        ResponseEntity<Map<String, Object>> createResp = post(BASE, createReq);
-        UUID accountId = UUID.fromString((String) createResp.getBody().get("accountId"));
+        UUID accountId = createAccount("Bob", "50.00");
 
-        var withdrawReq = new MoneyOperationRequest(new BigDecimal("200.00"), "EUR");
-        ResponseEntity<Map<String, Object>> resp = post(BASE + "/" + accountId + "/withdrawals", withdrawReq);
+        var resp = post(BASE + "/" + accountId + "/withdrawals",
+                new MoneyOperationRequest(new BigDecimal("200.00"), "EUR"));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        assertThat(resp.getBody().get("errorCode")).isEqualTo("INSUFFICIENT_FUNDS");
+        assertThat(body(resp)).containsEntry("errorCode", "INSUFFICIENT_FUNDS");
     }
 
     @Test
     void deposit_to_unknown_account_returns_404() {
-        var req = new MoneyOperationRequest(new BigDecimal("50.00"), "EUR");
-        ResponseEntity<Map<String, Object>> resp = post(BASE + "/" + UUID.randomUUID() + "/deposits", req);
+        var resp = post(BASE + "/" + UUID.randomUUID() + "/deposits",
+                new MoneyOperationRequest(new BigDecimal("50.00"), "EUR"));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(resp.getBody().get("errorCode")).isEqualTo("ACCOUNT_NOT_FOUND");
+        assertThat(body(resp)).containsEntry("errorCode", "ACCOUNT_NOT_FOUND");
     }
 
     @Test
     void create_account_with_blank_name_returns_400() {
-        var req = new CreateAccountRequest("", new BigDecimal("100.00"), "EUR");
-        ResponseEntity<Map<String, Object>> resp = post(BASE, req);
+        var resp = post(BASE, new CreateAccountRequest("", new BigDecimal("100.00"), "EUR"));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resp.getBody().get("errorCode")).isEqualTo("VALIDATION_ERROR");
+        assertThat(body(resp)).containsEntry("errorCode", "VALIDATION_ERROR");
     }
 
     @Test
     void withdraw_full_balance_succeeds_leaving_zero() {
-        var createReq = new CreateAccountRequest("Carol", new BigDecimal("100.00"), "EUR");
-        ResponseEntity<Map<String, Object>> createResp = post(BASE, createReq);
-        UUID accountId = UUID.fromString((String) createResp.getBody().get("accountId"));
+        UUID accountId = createAccount("Carol", "100.00");
 
-        var withdrawReq = new MoneyOperationRequest(new BigDecimal("100.00"), "EUR");
-        ResponseEntity<Map<String, Object>> resp = post(BASE + "/" + accountId + "/withdrawals", withdrawReq);
+        var resp = post(BASE + "/" + accountId + "/withdrawals",
+                new MoneyOperationRequest(new BigDecimal("100.00"), "EUR"));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(resp.getBody().get("balanceAfter")).isEqualTo(0.0);
+        assertThat(body(resp)).containsEntry("balanceAfter", 0.0);
     }
 
     @Test
     void multiple_accounts_are_independent() {
-        var req1 = new CreateAccountRequest("Alice", new BigDecimal("100.00"), "EUR");
-        var req2 = new CreateAccountRequest("Bob", new BigDecimal("200.00"), "EUR");
-        UUID id1 = UUID.fromString((String) post(BASE, req1).getBody().get("accountId"));
-        UUID id2 = UUID.fromString((String) post(BASE, req2).getBody().get("accountId"));
+        UUID id1 = createAccount("Alice", "100.00");
+        UUID id2 = createAccount("Bob", "200.00");
 
         post(BASE + "/" + id1 + "/deposits", new MoneyOperationRequest(new BigDecimal("50.00"), "EUR"));
 
-        ResponseEntity<Map<String, Object>> alice = get(BASE + "/" + id1);
-        ResponseEntity<Map<String, Object>> bob = get(BASE + "/" + id2);
-
-        assertThat(alice.getBody().get("balance")).isEqualTo(150.0);
-        assertThat(bob.getBody().get("balance")).isEqualTo(200.0);
+        assertThat(body(get(BASE + "/" + id1))).containsEntry("balance", 150.0);
+        assertThat(body(get(BASE + "/" + id2))).containsEntry("balance", 200.0);
     }
 }
