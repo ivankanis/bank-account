@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bankaccount
+      POSTGRES_USER: bankaccount
+      POSTGRES_PASSWORD: bankaccount
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bankaccount"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bankaccount
+      SPRING_DATASOURCE_USERNAME: bankaccount
+      SPRING_DATASOURCE_PASSWORD: bankaccount
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
