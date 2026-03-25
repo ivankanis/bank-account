@@ -2,11 +2,13 @@ package fr.kanis.bankaccount.infrastructure.persistence.entity;
 
 import fr.kanis.bankaccount.domain.model.TransactionType;
 import jakarta.persistence.*;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+@Getter
 @Entity
 @Table(name = "transactions")
 public class TransactionEntity {
@@ -47,12 +49,4 @@ public class TransactionEntity {
         this.balanceAfter = balanceAfter;
         this.occurredAt = occurredAt;
     }
-
-    public UUID getId() { return id; }
-    public UUID getAccountId() { return accountId; }
-    public TransactionType getType() { return type; }
-    public BigDecimal getAmount() { return amount; }
-    public String getCurrency() { return currency; }
-    public BigDecimal getBalanceAfter() { return balanceAfter; }
-    public Instant getOccurredAt() { return occurredAt; }
 }

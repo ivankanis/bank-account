@@ -1,11 +1,14 @@
 package fr.kanis.bankaccount.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+@Getter
 @Entity
 @Table(name = "accounts")
 public class AccountEntity {
@@ -17,6 +20,7 @@ public class AccountEntity {
     @Column(name = "owner_name", nullable = false)
     private String ownerName;
 
+    @Setter
     @Column(name = "balance", nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
 
@@ -35,12 +39,4 @@ public class AccountEntity {
         this.currency = currency;
         this.createdAt = createdAt;
     }
-
-    public UUID getId() { return id; }
-    public String getOwnerName() { return ownerName; }
-    public BigDecimal getBalance() { return balance; }
-    public String getCurrency() { return currency; }
-    public Instant getCreatedAt() { return createdAt; }
-
-    public void setBalance(BigDecimal balance) { this.balance = balance; }
 }
