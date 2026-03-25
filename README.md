@@ -1,5 +1,7 @@
 # Bank Account Kata
 
+[![CI](https://github.com/ivankanis/bank-account/actions/workflows/ci.yml/badge.svg)](https://github.com/ivankanis/bank-account/actions/workflows/ci.yml)
+
 Application de gestion de compte bancaire full-stack, construite comme un kata d'architecture hexagonale / DDD.
 
 ## Stack technique
